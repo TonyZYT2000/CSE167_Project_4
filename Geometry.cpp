@@ -66,6 +66,7 @@ Geometry::Geometry(std::string objFilename, glm::vec3 amb, glm::vec3 diff, glm::
 		}
 		objFile.close();
 		if (special) {
+			std::cerr << "special!" << std::endl;
 			normals = std::vector<glm::vec3>(vertexIdx.size());
 			for (int i = 0; i < vertexIdx.size(); ++i) {
 				normals[vertexIdx[i]] = temp_normals[normalIdx[i]];

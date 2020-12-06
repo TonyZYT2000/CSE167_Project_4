@@ -5,18 +5,9 @@ int Window::width;
 int Window::height;
 const char* Window::windowTitle = "GLFW Starter Project";
 
-// Skybox initialization
-Skybox * Window::skybox;
-unsigned int Window::skyboxTexture;
-
 // Objects to Render
 //Sphere* Window::disco;
 Transform* Window::world;
-Transform* Window::pillarMove;
-Transform* Window::discoMove;
-std::vector<Transform*> Window::barMove;
-std::vector<Transform*> Window::torusAndBarMove;
-std::vector<Transform*> Window::potMove;
 
 // Track key pressed
 KeyRecord Window::keyPressed;
@@ -26,31 +17,27 @@ KeyRecord Window::keyPressed;
 glm::mat4 Window::projection; 
 
 // View Matrix:
-glm::vec3 Window::eyePos(0, 0, -20);			// Camera position.
+glm::vec3 Window::eyePos(0, 20, 20);			// Camera position.
 glm::vec3 Window::lookAtPoint(0, 0, 0);		// The point we are looking at.
-glm::vec3 Window::upVector(0, 1, 0);		// The up direction of the camera.
+glm::vec3 Window::upVector(glm::normalize(glm::vec3(0, 1, -1)));		// The up direction of the camera.
 glm::mat4 Window::view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
-glm::mat4 Window::skyboxView = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
 
 float Window::speed = 1;
+glm::vec3 Window::prevPoint;
 
 // Light source properties
-glm::vec3 Window::lightPos(-20, 100, -50);
-glm::vec3 Window::lightColor(1, 1, 1);
+glm::vec3 Window::lightPos(0, 20, 20);
+glm::vec3 Window::lightColor(0.9, 0.9, 0.9);
 
 // Shader Program ID
 GLuint Window::phongShader; 
-GLuint Window::skyboxShader;
-GLuint Window::envmapShader;
 
 bool Window::initializeProgram() {
 	// Create a shader program with a vertex shader and a fragment shader.
 	phongShader = LoadShaders("shaders/phong.vert", "shaders/phong.frag");
-	skyboxShader = LoadShaders("shaders/skybox.vert", "shaders/skybox.frag");
-	envmapShader = LoadShaders("shaders/envmap.vert", "shaders/envmap.frag");
 
 	// Check the shader program.
-	if (!phongShader || !skyboxShader || !envmapShader)
+	if (!phongShader)
 	{
 		std::cerr << "Failed to initialize shader program" << std::endl;
 		return false;
@@ -61,207 +48,24 @@ bool Window::initializeProgram() {
 
 bool Window::initializeObjects()
 {
-	/*
-	std::vector<std::string> faces =
-	{
-		"skybox/Skybox_Water222_right.jpg",
-		"skybox/Skybox_Water222_left.jpg",
-		"skybox/Skybox_Water222_top.jpg",
-		"skybox/Skybox_Water222_base.jpg",
-		"skybox/Skybox_Water222_front.jpg",
-		"skybox/Skybox_Water222_back.jpg"
-	};
-	*/
-
-	// load faces for skybox
-	std::vector<std::string> faces =
-	{
-		"skybox/right.jpg",
-		"skybox/left.jpg",
-		"skybox/top.jpg",
-		"skybox/bottom.jpg",
-		"skybox/front.jpg",
-		"skybox/back.jpg"
-	};
-
-	// build skybox
-	skybox = new Skybox(500.0f);
-	skyboxTexture = skybox->loadCubemap(faces);
-
 	// initialize scene graph of the ride
-	initializeWorld();
+	world = new Transform(glm::mat4(1));
+	auto world2Station = new Transform(glm::mat4(1));
+	auto station = new Geometry("models/amongus_lobby.obj", glm::vec3(0.1), glm::vec3(0.9), glm::vec3(0.2), glm::vec3(1));
+	
+	world->addChild(world2Station);
+	world2Station->addChild(station);
 
 	return true;
 }
 
-void Window::initializeWorld() {
-	world = new Transform(glm::mat4(1), 0);
-	// world to land
-	Transform* worldToLand = new Transform(glm::translate(glm::vec3(0, -30, 100)), 0);
-	Geometry* land = new Geometry("models/land.obj", glm::vec3(0.12, 0.08, 0.07), glm::vec3(0.6, 0.4, 0.3), glm::vec3(0.5, 0.4, 0.4), glm::vec3(200, 1, 200));
-
-	// world to pillar
-	Transform* landToPillar = new Transform(glm::translate(glm::vec3(0, 20, 0)), 1);
-	Geometry* pillar = new Geometry("models/cylinder.obj", glm::vec3(0.02, 0.1, 0.15), glm::vec3(0, 0.6, 0.9), glm::vec3(0, 0, 0), glm::vec3(3, 50, 3));
-	// level 1 movement control
-	pillarMove = landToPillar;
-
-	// pillar to disco
-	Transform* pillarToDisco = new Transform(glm::translate(glm::vec3(0, 50, 0)), 2);
-	SphereNode* disco = new SphereNode(6.0f, envmapShader);
-	// level 2 movement control
-	discoMove = pillarToDisco;
-
-	// pillar to bar
-	Transform* pillarToBar1 = new Transform(glm::translate(glm::vec3(0, 30, 0)) * glm::rotate(glm::radians(60.0f), glm::vec3(0, 0, 1)), 2);
-	Transform* pillarToBar2 = new Transform(glm::translate(glm::vec3(0, 30, 0)) * glm::rotate(glm::radians(60.0f), glm::vec3(1, 0, 0)), 2);
-	Transform* pillarToBar3 = new Transform(glm::translate(glm::vec3(0, 30, 0)) * glm::rotate(glm::radians(60.0f), glm::vec3(0, 0, -1)), 2);
-	Transform* pillarToBar4 = new Transform(glm::translate(glm::vec3(0, 30, 0)) * glm::rotate(glm::radians(60.0f), glm::vec3(-1, 0, 0)), 2);
-	// level 2 movement control
-	barMove.push_back(pillarToBar1);
-	barMove.push_back(pillarToBar2);
-	barMove.push_back(pillarToBar3);
-	barMove.push_back(pillarToBar4);
-	// bars
-	Geometry* bar1 = new Geometry("models/cylinder.obj", glm::vec3(0.12, 0.05, 0.15), glm::vec3(0.8, 0.3, 0.9), glm::vec3(0.9, 0.5, 0.8), glm::vec3(1, 50, 1));
-	Geometry* bar2 = new Geometry("models/cylinder.obj", glm::vec3(0.06, 0.15, 0.12), glm::vec3(0.4, 0.9, 0.8), glm::vec3(0.3, 0.8, 0.9), glm::vec3(1, 50, 1));
-	Geometry* bar3 = new Geometry("models/cylinder.obj", glm::vec3(0.15, 0.08, 0.08), glm::vec3(0.9, 0.3, 0.3), glm::vec3(0.9, 0.1, 0.1), glm::vec3(1, 50, 1));
-	Geometry* bar4 = new Geometry("models/cylinder.obj", glm::vec3(0.02, 0.15, 0.05), glm::vec3(0.1, 0.9, 0.2), glm::vec3(0.1, 0.8, 0.1), glm::vec3(1, 50, 1));
-
-	// bar to cone (as the cover of the hole)
-	Transform* bar1ToCone = new Transform(glm::translate(glm::vec3(0, 52, 0)), 0);
-	Transform* bar2ToCone = new Transform(glm::translate(glm::vec3(0, 52, 0)), 0);
-	Transform* bar3ToCone = new Transform(glm::translate(glm::vec3(0, 52, 0)), 0);
-	Transform* bar4ToCone = new Transform(glm::translate(glm::vec3(0, 52, 0)), 0);
-	// cones
-	Geometry* cone1 = new Geometry("models/cone.obj", glm::vec3(0.12, 0.05, 0.15), glm::vec3(0.8, 0.3, 0.9), glm::vec3(0.9, 0.5, 0.8), glm::vec3(0.45, 1, 0.45));
-	Geometry* cone2 = new Geometry("models/cone.obj", glm::vec3(0.06, 0.15, 0.12), glm::vec3(0.4, 0.9, 0.8), glm::vec3(0.3, 0.8, 0.9), glm::vec3(0.45, 1, 0.45));
-	Geometry* cone3 = new Geometry("models/cone.obj", glm::vec3(0.15, 0.08, 0.08), glm::vec3(0.9, 0.3, 0.3), glm::vec3(0.9, 0.1, 0.1), glm::vec3(0.45, 1, 0.45));
-	Geometry* cone4 = new Geometry("models/cone.obj", glm::vec3(0.02, 0.15, 0.05), glm::vec3(0.1, 0.9, 0.2), glm::vec3(0.1, 0.8, 0.1), glm::vec3(0.45, 1, 0.45));
-
-	// bar to torus and torus bar
-	Transform* bar1ToTorus = new Transform(glm::translate(glm::vec3(0, 50, 0)), 4);
-	Transform* bar2ToTorus = new Transform(glm::translate(glm::vec3(0, 50, 0)), 4);
-	Transform* bar3ToTorus = new Transform(glm::translate(glm::vec3(0, 50, 0)), 4);
-	Transform* bar4ToTorus = new Transform(glm::translate(glm::vec3(0, 50, 0)), 4);
-	Transform* bar1ToTorusBar = new Transform(glm::translate(glm::vec3(0, 50, 0)) * glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)), 4);
-	Transform* bar2ToTorusBar = new Transform(glm::translate(glm::vec3(0, 50, 0)) * glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)), 4);
-	Transform* bar3ToTorusBar = new Transform(glm::translate(glm::vec3(0, 50, 0)) * glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)), 4);
-	Transform* bar4ToTorusBar = new Transform(glm::translate(glm::vec3(0, 50, 0)) * glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)), 4);
-	// level 3 movement control
-	torusAndBarMove.push_back(bar1ToTorus);
-	torusAndBarMove.push_back(bar1ToTorusBar);
-	torusAndBarMove.push_back(bar2ToTorus);
-	torusAndBarMove.push_back(bar2ToTorusBar);
-	torusAndBarMove.push_back(bar3ToTorus);
-	torusAndBarMove.push_back(bar3ToTorusBar);
-	torusAndBarMove.push_back(bar4ToTorus);
-	torusAndBarMove.push_back(bar4ToTorusBar);
-	// toruses and torus bars
-	Geometry* torus1 = new Geometry("models/torus_hr.obj", glm::vec3(0.1, 0.1, 0.05), glm::vec3(0), glm::vec3(0.99, 0.96, 0.6), glm::vec3(10, 5, 10));
-	Geometry* torus2 = new Geometry("models/torus_hr.obj", glm::vec3(0.05, 0.1, 0.1), glm::vec3(0), glm::vec3(0.6, 0.96, 0.99), glm::vec3(10, 5, 10));
-	Geometry* torus3 = new Geometry("models/torus_hr.obj", glm::vec3(0.1, 0.1, 0.05), glm::vec3(0), glm::vec3(0.99, 0.96, 0.6), glm::vec3(10, 5, 10));
-	Geometry* torus4 = new Geometry("models/torus_hr.obj", glm::vec3(0.05, 0.1, 0.1), glm::vec3(0), glm::vec3(0.6, 0.96, 0.99), glm::vec3(10, 5, 10));
-	Geometry* torusBar1 = new Geometry("models/cylinder.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0), glm::vec3(1), glm::vec3(1, 10, 1));
-	Geometry* torusBar2 = new Geometry("models/cylinder.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0), glm::vec3(1), glm::vec3(1, 10, 1));
-	Geometry* torusBar3 = new Geometry("models/cylinder.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0), glm::vec3(1), glm::vec3(1, 10, 1));
-	Geometry* torusBar4 = new Geometry("models/cylinder.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0), glm::vec3(1), glm::vec3(1, 10, 1));
-
-	// bar to pot
-	Transform* bar1ToPot = new Transform(glm::translate(glm::vec3(0, -50, 0)) * glm::rotate(glm::radians(-60.0f), glm::vec3(0, 0, 1)), 0);
-	Transform* bar2ToPot = new Transform(glm::translate(glm::vec3(0, -50, 0)) * glm::rotate(glm::radians(-60.0f), glm::vec3(1, 0, 0)), 0);
-	Transform* bar3ToPot = new Transform(glm::translate(glm::vec3(0, -50, 0)) * glm::rotate(glm::radians(-60.0f), glm::vec3(0, 0, -1)), 0);
-	Transform* bar4ToPot = new Transform(glm::translate(glm::vec3(0, -50, 0)) * glm::rotate(glm::radians(-60.0f), glm::vec3(-1, 0, 0)), 0);
-	Transform* animePot1 = new Transform(glm::mat4(1), 2);
-	Transform* animePot2 = new Transform(glm::mat4(1), 3);
-	Transform* animePot3 = new Transform(glm::mat4(1), 2);
-	Transform* animePot4 = new Transform(glm::mat4(1), 3);
-	// level 3 movement control
-	potMove.push_back(animePot1);
-	potMove.push_back(animePot2);
-	potMove.push_back(animePot3);
-	potMove.push_back(animePot4);
-	// pots
-	Geometry* pot1 = new Geometry("models/teapot.obj", glm::vec3(0.06, 0.1, 0.1), glm::vec3(0.3, 0.5, 0.5), glm::vec3(0.7, 0.8, 0.9), glm::vec3(0.2));
-	Geometry* pot2 = new Geometry("models/teapot.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0.6, 0.2, 0.2), glm::vec3(0.9, 0.7, 0.7), glm::vec3(0.2));
-	Geometry* pot3 = new Geometry("models/teapot.obj", glm::vec3(0.06, 0.1, 0.1), glm::vec3(0.3, 0.5, 0.5), glm::vec3(0.7, 0.8, 0.9), glm::vec3(0.2));
-	Geometry* pot4 = new Geometry("models/teapot.obj", glm::vec3(0.1, 0.1, 0.1), glm::vec3(0.6, 0.2, 0.2), glm::vec3(0.9, 0.7, 0.7), glm::vec3(0.2));
-
-	// add land and pillar
-	world->addChild(worldToLand);
-	worldToLand->addChild(land);
-	land->addChild(landToPillar);
-	landToPillar->addChild(pillar);
-
-	// add disco ball to pillar
-	pillar->addChild(pillarToDisco);
-	pillarToDisco->addChild(disco);
-
-	// add bars to pillar
-	pillar->addChild(pillarToBar1);
-	pillar->addChild(pillarToBar2);
-	pillar->addChild(pillarToBar3);
-	pillar->addChild(pillarToBar4);
-	pillarToBar1->addChild(bar1);
-	pillarToBar2->addChild(bar2);
-	pillarToBar3->addChild(bar3);
-	pillarToBar4->addChild(bar4);
-
-	// add cones to bars
-	bar1->addChild(bar1ToCone);
-	bar2->addChild(bar2ToCone);
-	bar3->addChild(bar3ToCone);
-	bar4->addChild(bar4ToCone);
-	bar1ToCone->addChild(cone1);
-	bar2ToCone->addChild(cone2);
-	bar3ToCone->addChild(cone3);
-	bar4ToCone->addChild(cone4);
-
-	// link torus and bar to bar1
-	bar1->addChild(bar1ToTorus);
-	bar1->addChild(bar1ToTorusBar);
-	bar1ToTorus->addChild(torus1);
-	bar1ToTorusBar->addChild(torusBar1);
-	// link torus and bar to bar2
-	bar2->addChild(bar2ToTorus);
-	bar2->addChild(bar2ToTorusBar);
-	bar2ToTorus->addChild(torus2);
-	bar2ToTorusBar->addChild(torusBar2);
-	// link torus and bar to bar3
-	bar3->addChild(bar3ToTorus);
-	bar3->addChild(bar3ToTorusBar);
-	bar3ToTorus->addChild(torus3);
-	bar3ToTorusBar->addChild(torusBar3);
-	// link torus and bar to bar4
-	bar4->addChild(bar4ToTorus);
-	bar4->addChild(bar4ToTorusBar);
-	bar4ToTorus->addChild(torus4);
-	bar4ToTorusBar->addChild(torusBar4);
-
-	// add pots
-	bar1->addChild(bar1ToPot);
-	bar1ToPot->addChild(animePot1);
-	animePot1->addChild(pot1);
-	bar2->addChild(bar2ToPot);
-	bar2ToPot->addChild(animePot2);
-	animePot2->addChild(pot2);
-	bar3->addChild(bar3ToPot);
-	bar3ToPot->addChild(animePot3);
-	animePot3->addChild(pot3);
-	bar4->addChild(bar4ToPot);
-	bar4ToPot->addChild(animePot4);
-	animePot4->addChild(pot4);
-}
 void Window::cleanUp()
 {
 	// Deallcoate the objects.
-	delete skybox;
 	delete world;
 
 	// Delete the shader program.
 	glDeleteProgram(phongShader);
-	glDeleteProgram(skyboxShader);
-	glDeleteProgram(envmapShader);
 }
 
 GLFWwindow* Window::createWindow(int width, int height)
@@ -352,16 +156,6 @@ void Window::displayCallback(GLFWwindow* window)
 	// Clear the color and depth buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
 
-	// Render the skybox
-	skybox->draw(skyboxView, projection, skyboxShader);
-
-	// Setup envmap shader for disco ball
-	glUseProgram(envmapShader);
-	glUniformMatrix4fv(glGetUniformLocation(envmapShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
-	glUniformMatrix4fv(glGetUniformLocation(envmapShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-	glUniform3fv(glGetUniformLocation(envmapShader, "eyePos"), 1, glm::value_ptr(Window::eyePos));
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-
 	// Render the objects
 	glUseProgram(phongShader);
 	glUniformMatrix4fv(glGetUniformLocation(phongShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -423,29 +217,6 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 			keyPressed.shiftPressed = true;
 			break;
 
-		// level 1 movement
-		case GLFW_KEY_1:
-			pillarMove->toggleMove();
-			break;
-
-		// level 2 movement
-		case GLFW_KEY_2:
-			for (auto move : barMove) {
-				move->toggleMove();
-			}
-			discoMove->toggleMove();
-			break;
-
-		// level 3 movement
-		case GLFW_KEY_3:
-			for (auto move : torusAndBarMove) {
-				move->toggleMove();
-			}
-			for (auto move : potMove) {
-				move->toggleMove();
-			}
-			break;
-
 		default:
 			break;
 		}
@@ -468,11 +239,9 @@ void Window::movement() {
 	if (keyPressed.qPressed) {
 		glm::mat4 rotate = glm::rotate(glm::mat4(1), glm::radians(0.5f), upVector);
 		lookAtPoint = eyePos + glm::vec3(rotate * glm::vec4(lookAtPoint - eyePos, 0));
-            skyboxView = glm::inverse(rotate) * skyboxView;
 	} else if (keyPressed.ePressed) {
 		glm::mat4 rotate = glm::rotate(glm::mat4(1), glm::radians(-0.5f), upVector);
 		lookAtPoint = eyePos + glm::vec3(rotate * glm::vec4(lookAtPoint - eyePos, 0));
-            skyboxView = glm::inverse(rotate) * skyboxView;
 	}
 
 	if (keyPressed.wPressed) {
@@ -513,3 +282,60 @@ void Window::movement() {
 
       view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
 }
+
+void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+	// when left button pressed
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		// set flag to true
+		keyPressed.mousePressed = true;
+		// calculate pressed position in 3D
+		double xpos;
+		double ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
+		prevPoint = trackBallMapping(glm::vec2(xpos, ypos));
+	}
+	// else, set flag to false
+	else {
+		keyPressed.mousePressed = false;
+	}
+}
+
+void Window::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
+	// when flag pressed is true
+	if (keyPressed.mousePressed) {
+		// get current screen position and calculate current position in 3D
+		glm::vec2 currPos(xpos, ypos);
+		glm::vec3 currPoint = trackBallMapping(currPos);
+
+		// get velocity
+		float vertVelocity = glm::length(currPoint - prevPoint);
+		// only move if velocity exceeds some threshold
+		if (vertVelocity > 0.0001) {
+			// get rot Axis
+			glm::vec3 rotAxis = glm::cross(currPoint, prevPoint);
+			rotAxis.y = 0;
+			rotAxis.z = 0;
+			rotAxis = glm::normalize(rotAxis);
+
+			glm::mat4 rotateMotion = glm::rotate(glm::mat4(1), glm::radians(vertVelocity * 25.0f), rotAxis);
+			upVector = glm::vec3(rotateMotion * glm::vec4(upVector, 0.0));
+                  eyePos = glm::vec3(rotateMotion * glm::vec4(eyePos, 0));
+                  view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
+			prevPoint = currPoint;
+		}
+	}
+}
+
+glm::vec3 Window::trackBallMapping(glm::vec2 point) {
+	glm::vec3 v(0);
+	double d;
+	v.x = (2 * point.x - width) / width;
+	v.y = (height - 2 * point.y) / height;
+	v.z = 0;
+	d = glm::length(v);
+	d = (d < 1) ? d : 1;
+	v.z = sqrt(1.001 - d * d);
+	v = v / glm::length(v);
+	return v;
+}
+

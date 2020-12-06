@@ -44,9 +44,11 @@ void main()
     vec3 specular = attLightColor * kSpecular * pow(specularFactor, 6);
 
     fragColor = vec4(ambient + diffuse + specular, 1.0f);
-    //fragColor = vec4(0);
-    //fragColor[0] = (worldNormal[0] + 1) / 2;
-    //fragColor[1] = (worldNormal[1] + 1) / 2;
-    //fragColor[2] = (worldNormal[2] + 1) / 2;
-    //fragColor[3] = 1.0f;
+    /*
+    fragColor = vec4(0);
+    fragColor[0] = (worldNormal[0] + 1) / 2;
+    fragColor[1] = (worldNormal[1] + 1) / 2;
+    fragColor[2] = (worldNormal[2] + 1) / 2;
+    fragColor[3] = 1.0f;
+    */
 }

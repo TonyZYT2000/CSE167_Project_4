@@ -20,6 +20,7 @@ struct KeyRecord {
 	bool dPressed;
 	bool ctrlPressed;
 	bool shiftPressed;
+	bool mousePressed;
 };
 
 class Window
@@ -31,24 +32,13 @@ public:
 	static int height;
 	static const char* windowTitle;
 
-	// Skybox
-	static Skybox* skybox;
-	static unsigned int skyboxTexture;
-
 	// Root of scene graph, world
 	static Transform* world;
 
 	// Key Transform node that control animation
-	static Transform* pillarMove;
-	static Transform* discoMove;
-	static std::vector<Transform*> barMove;
-	static std::vector<Transform*> torusAndBarMove;
-	static std::vector<Transform*> potMove;
-
 	// Camera Matrices
 	static glm::mat4 projection;
 	static glm::mat4 view;
-	static glm::mat4 skyboxView;
 	static glm::vec3 eyePos, lookAtPoint, upVector;
 
 	// Light Source
@@ -57,15 +47,11 @@ public:
 
 	// Shader Program ID
 	static GLuint phongShader;
-	static GLuint skyboxShader;
-	static GLuint envmapShader;
 
 	// Constructors and Destructors
 	static bool initializeProgram();
 	static bool initializeObjects();
 	static void cleanUp();
-
-	static void initializeWorld();
 
 	// Window functions
 	static GLFWwindow* createWindow(int width, int height);
@@ -76,11 +62,16 @@ public:
 	static void displayCallback(GLFWwindow*);
 
 	// Callbacks
-	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
-	static KeyRecord keyPressed;
-	static void movement();
 	static float speed;
+	static KeyRecord keyPressed;
+	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void movement();
+
+	static glm::vec2 pressedPos;
+	static glm::vec3 prevPoint;
+	static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+	static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+	static glm::vec3 trackBallMapping(glm::vec2 point);
 };
 
 #endif
