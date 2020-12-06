@@ -12,14 +12,11 @@
 #include "SphereNode.h"
 
 struct KeyRecord {
-	bool qPressed;
-	bool ePressed;
 	bool wPressed;
 	bool aPressed;
 	bool sPressed;
 	bool dPressed;
-	bool ctrlPressed;
-	bool shiftPressed;
+	bool pPressed;
 	bool mousePressed;
 };
 
@@ -34,6 +31,8 @@ public:
 
 	// Root of scene graph, world
 	static Transform* world;
+	static Transform* astroMoveControl;
+	static Transform* astroFaceControl;
 
 	// Key Transform node that control animation
 	// Camera Matrices
@@ -47,6 +46,7 @@ public:
 
 	// Shader Program ID
 	static GLuint phongShader;
+	static GLuint toonShader;
 
 	// Constructors and Destructors
 	static bool initializeProgram();
@@ -72,6 +72,8 @@ public:
 	static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 	static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 	static glm::vec3 trackBallMapping(glm::vec2 point);
+
+	static bool lobbyCollide(glm::vec3 location);
 };
 
 #endif

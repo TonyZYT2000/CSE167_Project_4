@@ -8,6 +8,8 @@ const char* Window::windowTitle = "GLFW Starter Project";
 // Objects to Render
 //Sphere* Window::disco;
 Transform* Window::world;
+Transform* Window::astroMoveControl;
+Transform* Window::astroFaceControl;
 
 // Track key pressed
 KeyRecord Window::keyPressed;
@@ -17,7 +19,7 @@ KeyRecord Window::keyPressed;
 glm::mat4 Window::projection; 
 
 // View Matrix:
-glm::vec3 Window::eyePos(0, 20, 20);			// Camera position.
+glm::vec3 Window::eyePos(0, 25, 25);			// Camera position.
 glm::vec3 Window::lookAtPoint(0, 0, 0);		// The point we are looking at.
 glm::vec3 Window::upVector(glm::normalize(glm::vec3(0, 1, -1)));		// The up direction of the camera.
 glm::mat4 Window::view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
@@ -31,13 +33,15 @@ glm::vec3 Window::lightColor(0.9, 0.9, 0.9);
 
 // Shader Program ID
 GLuint Window::phongShader; 
+GLuint Window::toonShader; 
 
 bool Window::initializeProgram() {
 	// Create a shader program with a vertex shader and a fragment shader.
 	phongShader = LoadShaders("shaders/phong.vert", "shaders/phong.frag");
+	toonShader = LoadShaders("shaders/toon.vert", "shaders/toon.frag");
 
 	// Check the shader program.
-	if (!phongShader)
+	if (!phongShader || !toonShader)
 	{
 		std::cerr << "Failed to initialize shader program" << std::endl;
 		return false;
@@ -50,12 +54,20 @@ bool Window::initializeObjects()
 {
 	// initialize scene graph of the ride
 	world = new Transform(glm::mat4(1));
-	auto world2Station = new Transform(glm::mat4(1));
-	auto station = new Geometry("models/amongus_lobby.obj", glm::vec3(0.1), glm::vec3(0.9), glm::vec3(0.2), glm::vec3(1));
+	auto world2Lobby = new Transform(glm::mat4(1));
+	auto lobby = new Geometry("models/amongus_lobby.obj", phongShader, glm::vec3(0.2), glm::vec3(0.8, 0.8, 0.9), glm::vec3(0.2), glm::vec3(1));
+	auto lobby2Astro = new Transform(glm::translate(glm::vec3(0, -4.3, 2)));
+	auto astroFace = new Transform(glm::mat4(1));
+	auto astro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), glm::vec3(0.31, 1, 0.22), glm::vec3(0), glm::vec3(1));
 	
-	world->addChild(world2Station);
-	world2Station->addChild(station);
+	world->addChild(world2Lobby);
+	world2Lobby->addChild(lobby);
+	lobby->addChild(lobby2Astro);
+	lobby2Astro->addChild(astroFace);
+	astroFace->addChild(astro);
 
+	astroMoveControl = lobby2Astro;
+	astroFaceControl = astroFace;
 	return true;
 }
 
@@ -163,8 +175,15 @@ void Window::displayCallback(GLFWwindow* window)
 	glUniform3fv(glGetUniformLocation(phongShader, "eyePos"), 1, glm::value_ptr(eyePos));
 	glUniform3fv(glGetUniformLocation(phongShader, "lightPos"), 1, glm::value_ptr(lightPos));
 	glUniform3fv(glGetUniformLocation(phongShader, "lightColor"), 1, glm::value_ptr(lightColor));
+
+	glUseProgram(toonShader);
+	glUniformMatrix4fv(glGetUniformLocation(toonShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(toonShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+	glUniform3fv(glGetUniformLocation(toonShader, "eyePos"), 1, glm::value_ptr(eyePos));
+	glUniform3fv(glGetUniformLocation(toonShader, "lightPos"), 1, glm::value_ptr(lightPos));
+	glUniform3fv(glGetUniformLocation(toonShader, "lightColor"), 1, glm::value_ptr(lightColor));
 	// call draw on scene graph
-	world->draw(glm::mat4(1), phongShader);
+	world->draw(glm::mat4(1));
 
 	// Gets events, including input such as keyboard and mouse or window resizing
 	glfwPollEvents();
@@ -185,14 +204,6 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 			glfwSetWindowShouldClose(window, GL_TRUE);				
 			break;
 
-		case GLFW_KEY_Q:
-			keyPressed.qPressed = true;
-			break;
-
-		case GLFW_KEY_E:
-			keyPressed.ePressed = true;
-			break;
-
 		case GLFW_KEY_W:
 			keyPressed.wPressed = true;
 			break;
@@ -209,12 +220,8 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 			keyPressed.dPressed = true;
 			break;
 
-		case GLFW_KEY_LEFT_CONTROL:
-			keyPressed.ctrlPressed = true;
-			break;
-
-		case GLFW_KEY_LEFT_SHIFT:
-			keyPressed.shiftPressed = true;
+		case GLFW_KEY_P:
+			keyPressed.pPressed = true;
 			break;
 
 		default:
@@ -223,61 +230,45 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 	}
 
 	else {
-		keyPressed.qPressed = false;
-		keyPressed.ePressed = false;
 		keyPressed.wPressed = false;
 		keyPressed.aPressed = false;
 		keyPressed.sPressed = false;
 		keyPressed.dPressed = false;
-		keyPressed.ctrlPressed = false;
-		keyPressed.shiftPressed = false;
+		keyPressed.pPressed = false;
 	}
 }
 
 // control key movement
 void Window::movement() {
-	if (keyPressed.qPressed) {
-		glm::mat4 rotate = glm::rotate(glm::mat4(1), glm::radians(0.5f), upVector);
-		lookAtPoint = eyePos + glm::vec3(rotate * glm::vec4(lookAtPoint - eyePos, 0));
-	} else if (keyPressed.ePressed) {
-		glm::mat4 rotate = glm::rotate(glm::mat4(1), glm::radians(-0.5f), upVector);
-		lookAtPoint = eyePos + glm::vec3(rotate * glm::vec4(lookAtPoint - eyePos, 0));
-	}
-
 	if (keyPressed.wPressed) {
-		glm::vec3 forward = glm::normalize(lookAtPoint - eyePos);
-		lookAtPoint += forward;
-		eyePos += forward;
+		astroMoveControl->move(glm::radians(180.0f));
+		astroFaceControl->face(glm::radians(180.0f));
+		if (lobbyCollide(astroMoveControl->getLocation())) {
+                  astroMoveControl->move(glm::radians(0.0f));
+		}
+	} else if (keyPressed.aPressed) {
+		astroMoveControl->move(glm::radians(270.0f));
+		astroFaceControl->face(glm::radians(270.0f));
+		if (lobbyCollide(astroMoveControl->getLocation())) {
+                  astroMoveControl->move(glm::radians(90.0f));
+		}
+	} else if (keyPressed.sPressed) {
+		astroMoveControl->move(glm::radians(0.0f));
+		astroFaceControl->face(glm::radians(0.0f));
+		if (lobbyCollide(astroMoveControl->getLocation())) {
+                  astroMoveControl->move(glm::radians(180.0f));
+		}
+	} else if (keyPressed.dPressed) {
+		astroMoveControl->move(glm::radians(90.0f));
+		astroFaceControl->face(glm::radians(90.0f));
+		if (lobbyCollide(astroMoveControl->getLocation())) {
+                  astroMoveControl->move(glm::radians(270.0f));
+		}
 	}
 
-	if (keyPressed.aPressed) {
-		glm::vec3 leftward = glm::normalize(glm::cross(upVector, lookAtPoint - eyePos));
-		lookAtPoint += leftward;
-		eyePos += leftward;
-	}
-
-	if (keyPressed.sPressed) {
-		glm::vec3 backward = glm::normalize(eyePos - lookAtPoint);
-		lookAtPoint += backward;
-		eyePos += backward;
-	}
-
-	if (keyPressed.dPressed) {
-		glm::vec3 rightward = glm::normalize(glm::cross(lookAtPoint - eyePos, upVector));
-		lookAtPoint += rightward;
-		eyePos += rightward;
-	}
-
-	if (keyPressed.ctrlPressed) {
-		glm::vec3 downward = -upVector;
-		lookAtPoint += downward;
-		eyePos += downward;
-	}
-
-	if (keyPressed.shiftPressed) {
-		glm::vec3 upward = upVector;
-		lookAtPoint += upward;
-		eyePos += upward;
+	if (keyPressed.pPressed) {
+		glm::vec3 location = astroMoveControl->getLocation();
+		std::cerr << location.x << ", " << location.y << ", " << location.z << std::endl;
 	}
 
       view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
@@ -339,3 +330,36 @@ glm::vec3 Window::trackBallMapping(glm::vec2 point) {
 	return v;
 }
 
+bool Window::lobbyCollide(glm::vec3 location) {
+	if (abs(location.x + 16) <= 1.1 || abs(location.x - 17) <= 1.1) {
+		std::cerr << "Collide lr side!" << std::endl;
+		return true;
+	}
+
+	if (abs(location.z - 0) <= 1.1 || abs(location.z - 17) <= 1.1) {
+		std::cerr << "Collide ud side!" << std::endl;
+		return true;
+	}
+
+	if (glm::length(glm::vec2(location.x, location.z) - glm::vec2(-9, 7)) <= 1.1 + 2.5) {
+		std::cerr << "Collide box 1!" << std::endl;
+		return true;
+	}
+
+	if (glm::length(glm::vec2(location.x, location.z) - glm::vec2(11, 4)) <= 1.1 + 2.5) {
+		std::cerr << "Collide box 2!" << std::endl;
+		return true;
+	}
+
+	if (abs(4 * location.x + (-5) * location.z + 128) / glm::sqrt(4 * 4 + 5 * 5) <= 1.1) {
+		std::cerr << "Collide diag 1!" << std::endl;
+		return true;
+	}
+
+	if (abs(4 * location.x + 5 * location.z - 130) / glm::sqrt(4 * 4 + 5 * 5) <= 1.1) {
+		std::cerr << "Collide diag 2!" << std::endl;
+		return true;
+	}
+
+	return false;
+}

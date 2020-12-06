@@ -14,7 +14,7 @@
 class Node
 {
 public:
-	virtual void draw(const glm::mat4& C, GLuint shader) = 0;
+	virtual void draw(const glm::mat4& C) = 0;
 	virtual void update() = 0;
 };
 

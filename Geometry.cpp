@@ -1,7 +1,7 @@
 #include "Geometry.h"
 
-Geometry::Geometry(std::string objFilename, glm::vec3 amb, glm::vec3 diff, glm::vec3 spec, glm::vec3 scale) : 
-	kAmbient(amb), kDiffuse(diff), kSpecular(spec) {
+Geometry::Geometry(std::string objFilename, GLuint shader, glm::vec3 amb, glm::vec3 diff, glm::vec3 spec, glm::vec3 scale) : 
+	shader(shader), kAmbient(amb), kDiffuse(diff), kSpecular(spec) {
 	// parsing vertex, vertex normal and faces
 	std::ifstream objFile(objFilename);
 
@@ -177,7 +177,7 @@ Geometry::~Geometry() {
 }
 
 
-void Geometry::draw(const glm::mat4& C, GLuint shader) {
+void Geometry::draw(const glm::mat4& C) {
 	// Actiavte the shader program 
 	glUseProgram(shader);
 
@@ -203,7 +203,7 @@ void Geometry::draw(const glm::mat4& C, GLuint shader) {
 	glUseProgram(0);
 
 	for (auto child : children) {
-		child->draw(C, shader);
+		child->draw(C);
 	}
 }
 

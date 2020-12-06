@@ -9,14 +9,18 @@ class Transform : public Node
 {
 private:
 	glm::mat4 transform;
+	glm::mat4 dirRecord;
 	std::list<Node*> children;
 
 public:
 	Transform(const glm::mat4& transMatrix);
 	~Transform();
-	void draw(const glm::mat4& C, GLuint shader);
+	void draw(const glm::mat4& C);
 	void update();
 	void addChild(Node* child);
+	void move(float angle);
+	void face(float angle);
+	glm::vec3 getLocation();
 };
 
 #endif
