@@ -269,6 +269,8 @@ void Window::movement() {
 	if (keyPressed.pPressed) {
 		glm::vec3 location = astroMoveControl->getLocation();
 		std::cerr << location.x << ", " << location.y << ", " << location.z << std::endl;
+		std::cerr << upVector.x << ", " << upVector.y << ", " << upVector.z << std::endl;
+		std::cerr << eyePos.x << ", " << eyePos.y << ", " << eyePos.z << std::endl;
 	}
 
       view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
@@ -301,16 +303,21 @@ void Window::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 		// get velocity
 		float vertVelocity = glm::length(currPoint - prevPoint);
 		// only move if velocity exceeds some threshold
-		if (vertVelocity > 0.0001) {
+		if (vertVelocity > 0.001) {
 			// get rot Axis
 			glm::vec3 rotAxis = glm::cross(currPoint, prevPoint);
 			rotAxis.y = 0;
 			rotAxis.z = 0;
-			rotAxis = glm::normalize(rotAxis);
+			if (rotAxis.x == 0) {
+				return;
+			}
+			else {
+				rotAxis.x = rotAxis.x > 0 ? 1 : -1;
+			}
 
-			glm::mat4 rotateMotion = glm::rotate(glm::mat4(1), glm::radians(vertVelocity * 25.0f), rotAxis);
+			glm::mat4 rotateMotion = glm::rotate(glm::mat4(1.0f), glm::radians(vertVelocity * 25.0f), rotAxis);
 			upVector = glm::vec3(rotateMotion * glm::vec4(upVector, 0.0));
-                  eyePos = glm::vec3(rotateMotion * glm::vec4(eyePos, 0));
+                  eyePos = glm::vec3(rotateMotion * glm::vec4(eyePos, 1.0));
                   view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
 			prevPoint = currPoint;
 		}
