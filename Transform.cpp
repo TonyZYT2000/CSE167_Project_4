@@ -36,3 +36,12 @@ void Transform::face(float angle) {
 glm::vec3 Transform::getLocation() {
       return glm::vec3(transform * glm::vec4(0, 0, 0, 1));
 }
+
+int Transform::getCount() {
+      return children.size();
+}
+
+void Transform::removeChild(Node* child) {
+      delete child;
+      children.remove(child);
+}

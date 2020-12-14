@@ -1,6 +1,9 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
+#include <stdlib.h>
+#include <time.h>
+
 #include "main.h"
 #include "shader.h"
 #include "Object.h"
@@ -23,7 +26,6 @@ struct KeyRecord {
 class Window
 {
 public:
-
 	// Window Properties
 	static int width;
 	static int height;
@@ -31,8 +33,12 @@ public:
 
 	// Root of scene graph, world
 	static Transform* world;
-	static Transform* astroMoveControl;
-	static Transform* astroFaceControl;
+	static Geometry* lobby;
+	static Transform* playerAstroMoveControl;
+	static Transform* playerAstroFaceControl;
+	static std::vector<Transform*> computerAstroMoveList;
+	static std::vector<Transform*> computerAstroFaceList;
+	static std::vector<float> angleList;
 
 	// Key Transform node that control animation
 	// Camera Matrices
@@ -65,7 +71,8 @@ public:
 	static float speed;
 	static KeyRecord keyPressed;
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-	static void movement();
+	static void playerMovement();
+	static void computerMovement();
 
 	static glm::vec2 pressedPos;
 	static glm::vec3 prevPoint;
@@ -73,7 +80,12 @@ public:
 	static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 	static glm::vec3 trackBallMapping(glm::vec2 point);
 
-	static bool lobbyCollide(glm::vec3 location);
+	// collision detection
+	static float lobbyCollide(glm::vec3 location, float angle);
+	static float astroCollide(glm::vec3 location, float angle);
+
+	// randomly add astro
+	static void randomAdd();
 };
 
 #endif

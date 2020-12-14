@@ -21,6 +21,9 @@ public:
 	void move(float angle);
 	void face(float angle);
 	glm::vec3 getLocation();
+
+	int getCount();
+	void removeChild(Node* child);
 };
 
 #endif

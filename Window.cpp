@@ -8,8 +8,12 @@ const char* Window::windowTitle = "GLFW Starter Project";
 // Objects to Render
 //Sphere* Window::disco;
 Transform* Window::world;
-Transform* Window::astroMoveControl;
-Transform* Window::astroFaceControl;
+Geometry* Window::lobby;
+Transform* Window::playerAstroMoveControl;
+Transform* Window::playerAstroFaceControl;
+std::vector<Transform*> Window::computerAstroMoveList;
+std::vector<Transform*> Window::computerAstroFaceList;
+std::vector<float> Window::angleList;
 
 // Track key pressed
 KeyRecord Window::keyPressed;
@@ -52,22 +56,26 @@ bool Window::initializeProgram() {
 
 bool Window::initializeObjects()
 {
+	// initialize random
+	srand(time(NULL));
+
 	// initialize scene graph of the ride
 	world = new Transform(glm::mat4(1));
 	auto world2Lobby = new Transform(glm::mat4(1));
-	auto lobby = new Geometry("models/amongus_lobby.obj", phongShader, glm::vec3(0.2), glm::vec3(0.8, 0.8, 0.9), glm::vec3(0.2), glm::vec3(1));
+	auto mainLobby = new Geometry("models/amongus_lobby.obj", phongShader, glm::vec3(0.2), glm::vec3(0.8, 0.8, 0.9), glm::vec3(0.2), glm::vec3(1));
 	auto lobby2Astro = new Transform(glm::translate(glm::vec3(0, -4.3, 2)));
 	auto astroFace = new Transform(glm::mat4(1));
 	auto astro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), glm::vec3(0.31, 1, 0.22), glm::vec3(0), glm::vec3(1));
 	
 	world->addChild(world2Lobby);
-	world2Lobby->addChild(lobby);
-	lobby->addChild(lobby2Astro);
+	world2Lobby->addChild(mainLobby);
+	mainLobby->addChild(lobby2Astro);
 	lobby2Astro->addChild(astroFace);
 	astroFace->addChild(astro);
 
-	astroMoveControl = lobby2Astro;
-	astroFaceControl = astroFace;
+	lobby = mainLobby;
+	playerAstroMoveControl = lobby2Astro;
+	playerAstroFaceControl = astroFace;
 	return true;
 }
 
@@ -157,8 +165,10 @@ void Window::resizeCallback(GLFWwindow* window, int width, int height)
 // Perform any necessary updates here 
 void Window::idleCallback()
 {
-	// Move according to key pressed
-	movement();
+	// move according to key pressed
+	playerMovement();
+	// move computer astros
+	computerMovement();
 	// update all objects in scene graph
 	world->update();
 }
@@ -239,41 +249,68 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 }
 
 // control key movement
-void Window::movement() {
+void Window::playerMovement() {
 	if (keyPressed.wPressed) {
-		astroMoveControl->move(glm::radians(180.0f));
-		astroFaceControl->face(glm::radians(180.0f));
-		if (lobbyCollide(astroMoveControl->getLocation())) {
-                  astroMoveControl->move(glm::radians(0.0f));
+		float angle = glm::radians(180.0);
+		playerAstroMoveControl->move(angle);
+		playerAstroFaceControl->face(angle);
+		if (lobbyCollide(playerAstroMoveControl->getLocation(), angle) != 10.0 ||
+			astroCollide(playerAstroMoveControl->getLocation(), angle) != 10.0) {
+                  playerAstroMoveControl->move(glm::radians(0.0f));
 		}
 	} else if (keyPressed.aPressed) {
-		astroMoveControl->move(glm::radians(270.0f));
-		astroFaceControl->face(glm::radians(270.0f));
-		if (lobbyCollide(astroMoveControl->getLocation())) {
-                  astroMoveControl->move(glm::radians(90.0f));
+		float angle = glm::radians(270.0);
+		playerAstroMoveControl->move(angle);
+		playerAstroFaceControl->face(angle);
+		if (lobbyCollide(playerAstroMoveControl->getLocation(), angle) != 10.0 ||
+			astroCollide(playerAstroMoveControl->getLocation(), angle) != 10.0) {
+                  playerAstroMoveControl->move(glm::radians(90.0f));
 		}
 	} else if (keyPressed.sPressed) {
-		astroMoveControl->move(glm::radians(0.0f));
-		astroFaceControl->face(glm::radians(0.0f));
-		if (lobbyCollide(astroMoveControl->getLocation())) {
-                  astroMoveControl->move(glm::radians(180.0f));
+		float angle = glm::radians(0.0);
+		playerAstroMoveControl->move(angle);
+		playerAstroFaceControl->face(angle);
+		if (lobbyCollide(playerAstroMoveControl->getLocation(), angle) != 10.0 ||
+			astroCollide(playerAstroMoveControl->getLocation(), angle) != 10.0) {
+                  playerAstroMoveControl->move(glm::radians(180.0f));
 		}
 	} else if (keyPressed.dPressed) {
-		astroMoveControl->move(glm::radians(90.0f));
-		astroFaceControl->face(glm::radians(90.0f));
-		if (lobbyCollide(astroMoveControl->getLocation())) {
-                  astroMoveControl->move(glm::radians(270.0f));
+		float angle = glm::radians(90.0);
+		playerAstroMoveControl->move(angle);
+		playerAstroFaceControl->face(angle);
+		if (lobbyCollide(playerAstroMoveControl->getLocation(), angle) != 10.0 ||
+			astroCollide(playerAstroMoveControl->getLocation(), angle) != 10.0) {
+                  playerAstroMoveControl->move(glm::radians(270.0f));
 		}
 	}
 
 	if (keyPressed.pPressed) {
-		glm::vec3 location = astroMoveControl->getLocation();
-		std::cerr << location.x << ", " << location.y << ", " << location.z << std::endl;
-		std::cerr << upVector.x << ", " << upVector.y << ", " << upVector.z << std::endl;
-		std::cerr << eyePos.x << ", " << eyePos.y << ", " << eyePos.z << std::endl;
+		glm::vec3 location = playerAstroMoveControl->getLocation();
+		randomAdd();
 	}
 
       view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
+}
+
+void Window::computerMovement() {
+	for (int i = 0; i < computerAstroMoveList.size(); ++i) {
+		computerAstroMoveList[i]->move(angleList[i]);
+		computerAstroFaceList[i]->face(angleList[i]);
+
+		float astroReflectAngle = astroCollide(computerAstroMoveList[i]->getLocation(), angleList[i]);
+		if (astroReflectAngle != 10.0) {
+			angleList[i] = astroReflectAngle;
+                  computerAstroMoveList[i]->move(angleList[i]);
+                  computerAstroFaceList[i]->face(angleList[i]);
+		}
+
+		float lobbyReflectAngle = lobbyCollide(computerAstroMoveList[i]->getLocation(), angleList[i]);
+		if (lobbyReflectAngle != 10.0) {
+			angleList[i] = lobbyReflectAngle;
+                  computerAstroMoveList[i]->move(angleList[i]);
+                  computerAstroFaceList[i]->face(angleList[i]);
+		}
+	}
 }
 
 void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -337,36 +374,141 @@ glm::vec3 Window::trackBallMapping(glm::vec2 point) {
 	return v;
 }
 
-bool Window::lobbyCollide(glm::vec3 location) {
-	if (abs(location.x + 16) <= 1.1 || abs(location.x - 17) <= 1.1) {
-		std::cerr << "Collide lr side!" << std::endl;
-		return true;
+float Window::lobbyCollide(glm::vec3 location, float angle) {
+	// collide left side
+	if (abs(location.x + 16) <= 1.1) {
+		std::cerr << "Collide l side!" << std::endl;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::vec2(1, 0);
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
-	if (abs(location.z - 0) <= 1.1 || abs(location.z - 17) <= 1.1) {
-		std::cerr << "Collide ud side!" << std::endl;
-		return true;
+
+	// collide right side
+	if (abs(location.x - 17) <= 1.1) {
+		std::cerr << "Collide r side" << std::endl;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::vec2(-1, 0);
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
+	// collide up side
+	if (abs(location.z - 0) <= 1.1) {
+		std::cerr << "Collide u side!" << std::endl;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::vec2(0, 1);
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
+	}
+
+	// collide down side
+	if (abs(location.z - 17) <= 1.1) {
+		std::cerr << "Collide d side!" << std::endl;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::vec2(0, -1);
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
+	}
+
+	// collide box 1
 	if (glm::length(glm::vec2(location.x, location.z) - glm::vec2(-9, 7)) <= 1.1 + 2.5) {
 		std::cerr << "Collide box 1!" << std::endl;
-		return true;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::normalize(glm::vec2(location.x, location.z) - glm::vec2(-9, 7));
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
+	// collide box 2
 	if (glm::length(glm::vec2(location.x, location.z) - glm::vec2(11, 4)) <= 1.1 + 2.5) {
 		std::cerr << "Collide box 2!" << std::endl;
-		return true;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::normalize(glm::vec2(location.x, location.z) - glm::vec2(11, 4));
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
+	// collide lower left diagonal line
 	if (abs(4 * location.x + (-5) * location.z + 128) / glm::sqrt(4 * 4 + 5 * 5) <= 1.1) {
 		std::cerr << "Collide diag 1!" << std::endl;
-		return true;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::normalize(glm::vec2(4, -5));
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
+	// collide lower right diagonal line
 	if (abs(4 * location.x + 5 * location.z - 130) / glm::sqrt(4 * 4 + 5 * 5) <= 1.1) {
 		std::cerr << "Collide diag 2!" << std::endl;
-		return true;
+		auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+		auto N = glm::normalize(glm::vec2(-4, -5));
+		auto reflect = glm::reflect(I, N);
+		return glm::atan(reflect.x, reflect.y);
 	}
 
-	return false;
+	// no collision flag
+	return 10.0;
+}
+
+float Window::astroCollide(glm::vec3 location, float angle) {
+	if (location.x != playerAstroMoveControl->getLocation().x ||
+		location.y != playerAstroMoveControl->getLocation().y ||
+		location.z != playerAstroMoveControl->getLocation().z) {
+		auto centerVec = glm::vec2(location.x, location.z) -
+			glm::vec2(playerAstroMoveControl->getLocation().x, playerAstroMoveControl->getLocation().z);
+		if (glm::length(centerVec) <= 2) {
+                  auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+			auto N = glm::normalize(centerVec);
+                  auto reflect = glm::reflect(I, N);
+                  return glm::atan(reflect.x, reflect.y);
+		}
+	}
+
+	for (auto computerAstro : computerAstroMoveList) {
+            if (location.x != computerAstro->getLocation().x ||
+                  location.y != computerAstro->getLocation().y ||
+                  location.z != computerAstro->getLocation().z) {
+
+                  auto centerVec = glm::vec2(location.x, location.z) -
+                        glm::vec2(computerAstro->getLocation().x, computerAstro->getLocation().z);
+                  if (glm::length(centerVec) <= 2) {
+                        auto I = glm::vec2(glm::sin(angle), glm::cos(angle));
+                        auto N = glm::normalize(centerVec);
+                        auto reflect = glm::reflect(I, N);
+                        return glm::atan(reflect.x, reflect.y);
+                  }
+            }
+	}
+
+	return 10.0;
+}
+
+void Window::randomAdd() {
+	float randomX = (float) rand() / RAND_MAX * 30 - 15;
+	float fixY = -4.3;
+	float randomZ = (float) rand() / RAND_MAX * 10;
+	auto randomLoc = glm::vec3(randomX, fixY, randomZ);
+	std::cerr << randomX << ", " << randomZ << std::endl;
+
+	while (lobbyCollide(randomLoc, 0) != 10.0 || astroCollide(randomLoc, 0) != 10.0) {
+            randomX = (float) rand() / RAND_MAX * 30 - 15;
+		randomZ = (float) rand() / RAND_MAX * 10;
+		randomLoc = glm::vec3(randomX, fixY, randomZ);
+	}
+
+      auto lobby2ComputerAstro = new Transform(glm::translate(randomLoc));
+      auto computerAstroFace = new Transform(glm::mat4(1));
+      auto computerAstro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), glm::vec3(0.31, 1, 0.22), glm::vec3(0), glm::vec3(1));
+
+      lobby->addChild(lobby2ComputerAstro);
+      lobby2ComputerAstro->addChild(computerAstroFace);
+      computerAstroFace->addChild(computerAstro);
+
+      computerAstroMoveList.push_back(lobby2ComputerAstro);
+      computerAstroFaceList.push_back(computerAstroFace);
+
+	float randomAngle = glm::radians((float) rand() / RAND_MAX * 360.0);
+	angleList.push_back(randomAngle);
 }
