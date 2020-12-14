@@ -202,12 +202,12 @@ void Window::idleCallback()
 	computerMovement();
 
 	int toggleRandom = rand() % 100;
-	if (toggleRandom < 10) {
+	if (toggleRandom < 5) {
 		randomToggle();
 	}
 
 	int addRandom = rand() % 100;
-	if (addRandom < 5) {
+	if (addRandom < 3) {
 		randomAdd();
 	}
 

@@ -6,7 +6,6 @@
 
 #include "main.h"
 #include "shader.h"
-#include "Object.h"
 #include "Transform.h"
 #include "Geometry.h"
 #include "Particle.h"
