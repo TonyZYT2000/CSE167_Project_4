@@ -216,3 +216,9 @@ void Geometry::update() {
 void Geometry::addChild(Node* child) {
       children.push_back(child);
 }
+
+void Geometry::removeChild(Node* child) {
+      delete child;
+      children.remove(child);
+}
+

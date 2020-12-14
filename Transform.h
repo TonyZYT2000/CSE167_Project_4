@@ -4,12 +4,15 @@
 #include "Node.h"
 #include <iostream>
 #include <list>
+#include <stdlib.h>
+#include <time.h>
 
 class Transform : public Node
 {
 private:
 	glm::mat4 transform;
 	glm::mat4 dirRecord;
+	float speed;
 	std::list<Node*> children;
 
 public:
@@ -21,9 +24,7 @@ public:
 	void move(float angle);
 	void face(float angle);
 	glm::vec3 getLocation();
-
-	int getCount();
-	void removeChild(Node* child);
+	void toggleMove();
 };
 
 #endif

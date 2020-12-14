@@ -14,6 +14,7 @@ Transform* Window::playerAstroFaceControl;
 std::vector<Transform*> Window::computerAstroMoveList;
 std::vector<Transform*> Window::computerAstroFaceList;
 std::vector<float> Window::angleList;
+std::vector<int> Window::colorIndexList;
 
 // Track key pressed
 KeyRecord Window::keyPressed;
@@ -34,6 +35,24 @@ glm::vec3 Window::prevPoint;
 // Light source properties
 glm::vec3 Window::lightPos(0, 20, 20);
 glm::vec3 Window::lightColor(0.9, 0.9, 0.9);
+
+// color list and color status
+std::vector<glm::vec3> Window::colorList({
+	glm::vec3((float)0x3e / 255, (float)0x47 / 255, (float)0x4e / 255),
+	glm::vec3((float)0x13 / 255, (float)0x2e / 255, (float)0xd1 / 255),
+	glm::vec3((float)0x71 / 255, (float)0x49 / 255, (float)0x1d / 255),
+	glm::vec3((float)0x39 / 255, (float)0xfe / 255, (float)0xdd / 255),
+	glm::vec3((float)0x13 / 255, (float)0x80 / 255, (float)0x2c / 255),
+	glm::vec3((float)0x4e / 255, (float)0xef / 255, (float)0x38 / 255),
+	glm::vec3((float)0xf1 / 255, (float)0x7d / 255, (float)0x0c / 255),
+	glm::vec3((float)0xec / 255, (float)0x54 / 255, (float)0xbb / 255),
+	glm::vec3((float)0x6c / 255, (float)0x2f / 255, (float)0xbc / 255),
+	glm::vec3((float)0xc5 / 255, (float)0x12 / 255, (float)0x11 / 255),
+	glm::vec3((float)0xd6 / 255, (float)0xdf / 255, (float)0xf1 / 255),
+	glm::vec3((float)0xf6 / 255, (float)0xf6 / 255, (float)0x57 / 255),
+});
+
+std::vector<bool> Window::colorStatus(12, false);
 
 // Shader Program ID
 GLuint Window::phongShader; 
@@ -65,7 +84,9 @@ bool Window::initializeObjects()
 	auto mainLobby = new Geometry("models/amongus_lobby.obj", phongShader, glm::vec3(0.2), glm::vec3(0.8, 0.8, 0.9), glm::vec3(0.2), glm::vec3(1));
 	auto lobby2Astro = new Transform(glm::translate(glm::vec3(0, -4.3, 2)));
 	auto astroFace = new Transform(glm::mat4(1));
-	auto astro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), glm::vec3(0.31, 1, 0.22), glm::vec3(0), glm::vec3(1));
+	auto astro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), colorList[5], glm::vec3(0), glm::vec3(1));
+	colorStatus[5] = true;
+	lobby2Astro->toggleMove();
 	
 	world->addChild(world2Lobby);
 	world2Lobby->addChild(mainLobby);
@@ -169,6 +190,21 @@ void Window::idleCallback()
 	playerMovement();
 	// move computer astros
 	computerMovement();
+
+	int toggleRandom = rand() % 100;
+	if (toggleRandom < 10) {
+		randomToggle();
+	}
+
+	int addRandom = rand() % 100;
+	if (addRandom < 5) {
+		randomAdd();
+	}
+
+	int removeRandom = rand() % 300;
+	if (removeRandom < 1) {
+		randomRemove();
+	}
 	// update all objects in scene graph
 	world->update();
 }
@@ -231,7 +267,11 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 			break;
 
 		case GLFW_KEY_P:
-			keyPressed.pPressed = true;
+			randomAdd();
+			break;
+
+		case GLFW_KEY_K:
+                  randomRemove();
 			break;
 
 		default:
@@ -244,7 +284,6 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 		keyPressed.aPressed = false;
 		keyPressed.sPressed = false;
 		keyPressed.dPressed = false;
-		keyPressed.pPressed = false;
 	}
 }
 
@@ -282,11 +321,6 @@ void Window::playerMovement() {
 			astroCollide(playerAstroMoveControl->getLocation(), angle) != 10.0) {
                   playerAstroMoveControl->move(glm::radians(270.0f));
 		}
-	}
-
-	if (keyPressed.pPressed) {
-		glm::vec3 location = playerAstroMoveControl->getLocation();
-		randomAdd();
 	}
 
       view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
@@ -383,7 +417,6 @@ float Window::lobbyCollide(glm::vec3 location, float angle) {
 		auto reflect = glm::reflect(I, N);
 		return glm::atan(reflect.x, reflect.y);
 	}
-
 
 	// collide right side
 	if (abs(location.x - 17) <= 1.1) {
@@ -486,6 +519,10 @@ float Window::astroCollide(glm::vec3 location, float angle) {
 }
 
 void Window::randomAdd() {
+	if (computerAstroMoveList.size() == 10) {
+		return;
+	}
+
 	float randomX = (float) rand() / RAND_MAX * 30 - 15;
 	float fixY = -4.3;
 	float randomZ = (float) rand() / RAND_MAX * 10;
@@ -500,7 +537,13 @@ void Window::randomAdd() {
 
       auto lobby2ComputerAstro = new Transform(glm::translate(randomLoc));
       auto computerAstroFace = new Transform(glm::mat4(1));
-      auto computerAstro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), glm::vec3(0.31, 1, 0.22), glm::vec3(0), glm::vec3(1));
+
+	int randomColorIndex = rand() % 12;
+	while (colorStatus[randomColorIndex]) {
+		randomColorIndex = rand() % 12;
+	}
+      auto computerAstro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), colorList[randomColorIndex], glm::vec3(0), glm::vec3(1));
+	colorStatus[randomColorIndex] = true;
 
       lobby->addChild(lobby2ComputerAstro);
       lobby2ComputerAstro->addChild(computerAstroFace);
@@ -511,4 +554,29 @@ void Window::randomAdd() {
 
 	float randomAngle = glm::radians((float) rand() / RAND_MAX * 360.0);
 	angleList.push_back(randomAngle);
+	colorIndexList.push_back(randomColorIndex);
+}
+
+void Window::randomRemove() {
+	if (computerAstroMoveList.size() == 0) {
+		return;
+	}
+
+	int index = rand() % computerAstroMoveList.size();
+	lobby->removeChild(computerAstroMoveList[index]);
+	computerAstroMoveList.erase(computerAstroMoveList.begin() + index);
+	computerAstroFaceList.erase(computerAstroFaceList.begin() + index);
+	angleList.erase(angleList.begin() + index);
+
+	colorStatus[colorIndexList[index]] = false;
+	colorIndexList.erase(colorIndexList.begin() + index);
+}
+
+void Window::randomToggle() {
+	if (computerAstroMoveList.size() == 0) {
+		return;
+	}
+
+      int index = rand() % computerAstroMoveList.size();
+	computerAstroMoveList[index]->toggleMove();
 }

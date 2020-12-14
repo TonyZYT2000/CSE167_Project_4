@@ -19,7 +19,6 @@ struct KeyRecord {
 	bool aPressed;
 	bool sPressed;
 	bool dPressed;
-	bool pPressed;
 	bool mousePressed;
 };
 
@@ -39,6 +38,7 @@ public:
 	static std::vector<Transform*> computerAstroMoveList;
 	static std::vector<Transform*> computerAstroFaceList;
 	static std::vector<float> angleList;
+	static std::vector<int> colorIndexList;
 
 	// Key Transform node that control animation
 	// Camera Matrices
@@ -49,6 +49,10 @@ public:
 	// Light Source
 	static glm::vec3 lightPos;
 	static glm::vec3 lightColor;
+
+	// astro color list and count
+	static std::vector<glm::vec3> colorList;
+	static std::vector<bool> colorStatus;
 
 	// Shader Program ID
 	static GLuint phongShader;
@@ -86,6 +90,10 @@ public:
 
 	// randomly add astro
 	static void randomAdd();
+	// randomly remove astro
+	static void randomRemove();
+
+	static void randomToggle();
 };
 
 #endif

@@ -31,6 +31,7 @@ public:
 	void draw(const glm::mat4& C);
 	void update();
 	void addChild(Node* child);
+	void removeChild(Node* child);
 };
 
 #endif
