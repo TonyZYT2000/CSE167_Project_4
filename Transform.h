@@ -21,6 +21,7 @@ public:
 	void draw(const glm::mat4& C);
 	void update();
 	void addChild(Node* child);
+	void removeChild(Node* child);
 	void move(float angle);
 	void face(float angle);
 	glm::vec3 getLocation();

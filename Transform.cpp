@@ -26,6 +26,12 @@ void Transform::addChild(Node* child) {
       children.push_back(child);
 }
 
+void Transform::removeChild(Node* child) {
+      delete child;
+      children.remove(child);
+}
+
+
 void Transform::move(float angle) {
       transform = glm::translate(glm::vec3(speed * glm::sin(angle), 0, speed * glm::cos(angle))) * transform;
 }

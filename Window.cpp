@@ -13,8 +13,12 @@ Transform* Window::playerAstroMoveControl;
 Transform* Window::playerAstroFaceControl;
 std::vector<Transform*> Window::computerAstroMoveList;
 std::vector<Transform*> Window::computerAstroFaceList;
+std::vector<Particle*> Window::particleList;
 std::vector<float> Window::angleList;
 std::vector<int> Window::colorIndexList;
+
+int Window::removeDelay = 200;
+int Window::indexToRemove = -1;
 
 // Track key pressed
 KeyRecord Window::keyPressed;
@@ -29,7 +33,6 @@ glm::vec3 Window::lookAtPoint(0, 0, 0);		// The point we are looking at.
 glm::vec3 Window::upVector(glm::normalize(glm::vec3(0, 1, -1)));		// The up direction of the camera.
 glm::mat4 Window::view = glm::lookAt(Window::eyePos, Window::lookAtPoint, Window::upVector);
 
-float Window::speed = 1;
 glm::vec3 Window::prevPoint;
 
 // Light source properties
@@ -57,14 +60,16 @@ std::vector<bool> Window::colorStatus(12, false);
 // Shader Program ID
 GLuint Window::phongShader; 
 GLuint Window::toonShader; 
+GLuint Window::particleShader;
 
 bool Window::initializeProgram() {
 	// Create a shader program with a vertex shader and a fragment shader.
 	phongShader = LoadShaders("shaders/phong.vert", "shaders/phong.frag");
 	toonShader = LoadShaders("shaders/toon.vert", "shaders/toon.frag");
+	particleShader = LoadShaders("shaders/particle.vert", "shaders/particle.frag");
 
 	// Check the shader program.
-	if (!phongShader || !toonShader)
+	if (!phongShader || !toonShader || !particleShader)
 	{
 		std::cerr << "Failed to initialize shader program" << std::endl;
 		return false;
@@ -87,11 +92,14 @@ bool Window::initializeObjects()
 	auto astro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), colorList[5], glm::vec3(0), glm::vec3(1));
 	colorStatus[5] = true;
 	lobby2Astro->toggleMove();
+
+	auto particle = new Particle(particleShader, glm::vec3(0, 1, 1), 150, 2);
 	
 	world->addChild(world2Lobby);
 	world2Lobby->addChild(mainLobby);
 	mainLobby->addChild(lobby2Astro);
 	lobby2Astro->addChild(astroFace);
+	lobby2Astro->addChild(particle);
 	astroFace->addChild(astro);
 
 	lobby = mainLobby;
@@ -107,6 +115,8 @@ void Window::cleanUp()
 
 	// Delete the shader program.
 	glDeleteProgram(phongShader);
+	glDeleteProgram(toonShader);
+	glDeleteProgram(particleShader);
 }
 
 GLFWwindow* Window::createWindow(int width, int height)
@@ -201,10 +211,16 @@ void Window::idleCallback()
 		randomAdd();
 	}
 
-	int removeRandom = rand() % 300;
-	if (removeRandom < 1) {
-		randomRemove();
+	if (indexToRemove != -1) {
+            randomRemove();
 	}
+	else {
+            int removeRandom = rand() % 200;
+            if (removeRandom < 1) {
+                  randomRemove();
+            }
+	}
+
 	// update all objects in scene graph
 	world->update();
 }
@@ -228,6 +244,10 @@ void Window::displayCallback(GLFWwindow* window)
 	glUniform3fv(glGetUniformLocation(toonShader, "eyePos"), 1, glm::value_ptr(eyePos));
 	glUniform3fv(glGetUniformLocation(toonShader, "lightPos"), 1, glm::value_ptr(lightPos));
 	glUniform3fv(glGetUniformLocation(toonShader, "lightColor"), 1, glm::value_ptr(lightColor));
+
+	glUseProgram(particleShader);
+	glUniformMatrix4fv(glGetUniformLocation(particleShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(particleShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 	// call draw on scene graph
 	world->draw(glm::mat4(1));
 
@@ -264,14 +284,6 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 
 		case GLFW_KEY_D:
 			keyPressed.dPressed = true;
-			break;
-
-		case GLFW_KEY_P:
-			randomAdd();
-			break;
-
-		case GLFW_KEY_K:
-                  randomRemove();
 			break;
 
 		default:
@@ -518,6 +530,24 @@ float Window::astroCollide(glm::vec3 location, float angle) {
 	return 10.0;
 }
 
+bool Window::initialAstroCollide(glm::vec3 location) {
+		auto centerVec = glm::vec2(location.x, location.z) -
+			glm::vec2(playerAstroMoveControl->getLocation().x, playerAstroMoveControl->getLocation().z);
+		if (glm::length(centerVec) <= 2) {
+			return true;
+		}
+
+	for (auto computerAstro : computerAstroMoveList) {
+            auto centerVec = glm::vec2(location.x, location.z) -
+                  glm::vec2(computerAstro->getLocation().x, computerAstro->getLocation().z);
+            if (glm::length(centerVec) <= 2) {
+			return true;
+            }
+	}
+
+	return false;
+}
+
 void Window::randomAdd() {
 	if (computerAstroMoveList.size() == 10) {
 		return;
@@ -529,12 +559,13 @@ void Window::randomAdd() {
 	auto randomLoc = glm::vec3(randomX, fixY, randomZ);
 	std::cerr << randomX << ", " << randomZ << std::endl;
 
-	while (lobbyCollide(randomLoc, 0) != 10.0 || astroCollide(randomLoc, 0) != 10.0) {
+	while (lobbyCollide(randomLoc, 0) != 10.0 || initialAstroCollide(randomLoc)) {
             randomX = (float) rand() / RAND_MAX * 30 - 15;
 		randomZ = (float) rand() / RAND_MAX * 10;
 		randomLoc = glm::vec3(randomX, fixY, randomZ);
 	}
 
+	// particle effect appear
       auto lobby2ComputerAstro = new Transform(glm::translate(randomLoc));
       auto computerAstroFace = new Transform(glm::mat4(1));
 
@@ -545,12 +576,16 @@ void Window::randomAdd() {
       auto computerAstro = new Geometry("models/amongus_astro_still.obj", toonShader, glm::vec3(0.1), colorList[randomColorIndex], glm::vec3(0), glm::vec3(1));
 	colorStatus[randomColorIndex] = true;
 
+	auto particle = new Particle(particleShader, glm::vec3(0, 1, 1), 150, 2);
+
       lobby->addChild(lobby2ComputerAstro);
       lobby2ComputerAstro->addChild(computerAstroFace);
+	lobby2ComputerAstro->addChild(particle);
       computerAstroFace->addChild(computerAstro);
 
       computerAstroMoveList.push_back(lobby2ComputerAstro);
       computerAstroFaceList.push_back(computerAstroFace);
+	particleList.push_back(particle);
 
 	float randomAngle = glm::radians((float) rand() / RAND_MAX * 360.0);
 	angleList.push_back(randomAngle);
@@ -562,14 +597,26 @@ void Window::randomRemove() {
 		return;
 	}
 
-	int index = rand() % computerAstroMoveList.size();
-	lobby->removeChild(computerAstroMoveList[index]);
-	computerAstroMoveList.erase(computerAstroMoveList.begin() + index);
-	computerAstroFaceList.erase(computerAstroFaceList.begin() + index);
-	angleList.erase(angleList.begin() + index);
+	// particle effect disappear
+	if (removeDelay == 200) {
+            indexToRemove = rand() % computerAstroMoveList.size();
+		particleList[indexToRemove]->resetCounter();
+	}
+	if (removeDelay > 0) {
+		--removeDelay;
+	}
+	else {
+            lobby->removeChild(computerAstroMoveList[indexToRemove]);
+            computerAstroMoveList.erase(computerAstroMoveList.begin() + indexToRemove);
+            computerAstroFaceList.erase(computerAstroFaceList.begin() + indexToRemove);
+            particleList.erase(particleList.begin() + indexToRemove);
+            angleList.erase(angleList.begin() + indexToRemove);
 
-	colorStatus[colorIndexList[index]] = false;
-	colorIndexList.erase(colorIndexList.begin() + index);
+            colorStatus[colorIndexList[indexToRemove]] = false;
+            colorIndexList.erase(colorIndexList.begin() + indexToRemove);
+		removeDelay = 200;
+		indexToRemove = -1;
+	}
 }
 
 void Window::randomToggle() {

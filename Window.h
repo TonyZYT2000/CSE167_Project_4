@@ -7,12 +7,9 @@
 #include "main.h"
 #include "shader.h"
 #include "Object.h"
-#include "Cube.h"
-#include "Skybox.h"
-#include "Sphere.h"
 #include "Transform.h"
 #include "Geometry.h"
-#include "SphereNode.h"
+#include "Particle.h"
 
 struct KeyRecord {
 	bool wPressed;
@@ -37,6 +34,7 @@ public:
 	static Transform* playerAstroFaceControl;
 	static std::vector<Transform*> computerAstroMoveList;
 	static std::vector<Transform*> computerAstroFaceList;
+	static std::vector<Particle*> particleList;
 	static std::vector<float> angleList;
 	static std::vector<int> colorIndexList;
 
@@ -54,9 +52,14 @@ public:
 	static std::vector<glm::vec3> colorList;
 	static std::vector<bool> colorStatus;
 
+	// remove particle effect timer
+	static int removeDelay;
+	static int indexToRemove;
+
 	// Shader Program ID
 	static GLuint phongShader;
 	static GLuint toonShader;
+	static GLuint particleShader;
 
 	// Constructors and Destructors
 	static bool initializeProgram();
@@ -72,7 +75,6 @@ public:
 	static void displayCallback(GLFWwindow*);
 
 	// Callbacks
-	static float speed;
 	static KeyRecord keyPressed;
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void playerMovement();
@@ -87,6 +89,7 @@ public:
 	// collision detection
 	static float lobbyCollide(glm::vec3 location, float angle);
 	static float astroCollide(glm::vec3 location, float angle);
+	static bool initialAstroCollide(glm::vec3 location);
 
 	// randomly add astro
 	static void randomAdd();
